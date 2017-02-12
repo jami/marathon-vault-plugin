@@ -11,4 +11,4 @@ To build the package run this command:
 
 
 ## Please refer to the blogpost for more info
-See [blog post](https://container-orchestration.blogspot.com/2017/02/how-to-handle-secrets-in-dcos-or.html)
+See [blog post](http://popalgo.blogspot.com/2017/02/handling-secrets-in-dcos-or.html)
