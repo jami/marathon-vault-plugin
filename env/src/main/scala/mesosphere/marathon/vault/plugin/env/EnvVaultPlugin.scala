@@ -17,28 +17,41 @@ class EnvVaultPlugin extends RunSpecTaskProcessor with PluginConfiguration {
 
   def apply(runSpec: mesosphere.marathon.plugin.RunSpec, builder: org.apache.mesos.Protos.TaskInfo.Builder): Unit = {
     val envBuilder = builder.getCommand.getEnvironment.toBuilder
-    var vault_addr = envVariables. get("address").getOrElse("none")
-    var token = envVariables. get("token").getOrElse("none")
-    if ( !vault_addr.equals("none") && !token.equals("none")) {
-        runSpec.secrets.foreach {
-          case(key, secret) =>
-            val resp = Http(vault_addr + "v1/secret/" + secret.source).header("X-Vault-Token",token).option(HttpOptions.allowUnsafeSSL).asString
-            if( resp.is2xx) {
-               val jsonresp = Json.parse(resp.body)
-               val secretval = (jsonresp \ "data").as[String]
-               val envVariable = Protos.Environment.Variable.newBuilder()
-               envVariable.setName(key)
-               envVariable.setValue(secretval)
-               envBuilder.addVariables(envVariable)
-            } else {
-              log.error(s"got unexpected response from vault $resp")
-            }
-        }
-    } else {
+    val maybeVaultAddr = envVariables.get("address")
+    val maybeToken = envVariables.get("token")
+
+    for {
+      vaultAddr <- maybeVaultAddr
+      token <- maybeToken
+    } yield {
+      runSpec.secrets.foreach {
+        case(key, secret) =>
+          val resp = Http(makeVaultUrl(vault_addr, s"v1/secret/${secret.source}")).header("X-Vault-Token",token).option(HttpOptions.allowUnsafeSSL).asString
+          if(resp.is2xx) {
+            val jsonresp = Json.parse(resp.body)
+            val secretval = (jsonresp \ "data").as[String]
+            val envVariable = Protos.Environment.Variable.newBuilder()
+            envVariable.setName(key)
+            envVariable.setValue(secretval)
+            envBuilder.addVariables(envVariable)
+          } else {
+            log.error(s"got unexpected response from vault $resp")
+          }
+      }
+    }
+
+    if (maybeVaultAddr.isEmpty || maybeToken.isEmpty) {
       log.error(s"missing address and/or token in plugin config")
     }
+
     val commandBuilder = builder.getCommand.toBuilder
     commandBuilder.setEnvironment(envBuilder)
     builder.setCommand(commandBuilder)
   }
+
+  protected def makeVaultUrl(host: String, path: String): String = {
+    // This ignores paths on `host`, e.g. company.com/vault + /v1/sys/self-capabilities
+    (new URL(new URL(host), path)).toString
+  }
 }
+
