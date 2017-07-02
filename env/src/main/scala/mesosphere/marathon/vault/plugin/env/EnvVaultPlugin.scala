@@ -6,6 +6,7 @@ import org.apache.mesos.Protos
 import scalaj.http._
 import play.api.libs.json._
 import org.slf4j.LoggerFactory
+import java.net.URL
 
 class EnvVaultPlugin extends RunSpecTaskProcessor with PluginConfiguration {
   private[env] var envVariables = Map.empty[String, String]
@@ -26,7 +27,7 @@ class EnvVaultPlugin extends RunSpecTaskProcessor with PluginConfiguration {
     } yield {
       runSpec.secrets.foreach {
         case(key, secret) =>
-          val resp = Http(makeVaultUrl(vault_addr, s"v1/secret/${secret.source}")).header("X-Vault-Token",token).option(HttpOptions.allowUnsafeSSL).asString
+          val resp = Http(makeVaultUrl(vaultAddr, s"v1/secret/${secret.source}")).header("X-Vault-Token",token).option(HttpOptions.allowUnsafeSSL).asString
           if(resp.is2xx) {
             val jsonresp = Json.parse(resp.body)
             val secretval = (jsonresp \ "data").as[String]
