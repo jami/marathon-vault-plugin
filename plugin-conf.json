@@ -1,0 +1,12 @@
+{
+  "plugins": {
+    "MarathonVaultPlugin": {
+      "plugin": "mesosphere.marathon.plugin.task.RunSpecTaskProcessor",
+      "implementation": "comptelfwd.marathon.vault.plugin.MarathonVaultPlugin",
+      "configuration": {
+        "token": "xxxx",
+        "address": "https://vault.marathon.mesos:8200/"
+      }
+    }
+  }
+}
